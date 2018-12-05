@@ -26,12 +26,11 @@ app.use(cors());
 
 /** defining schema **/
 const Schema = mongoose.Schema;
-const urlInfoSchema = new mongoose.Schema({
+const shortenedUrlSchema = new mongoose.Schema({
   url: String,
   shortID: Number
 });
-const shortenedURL = mongoose.model('shortenedURL', urlInfoSchema);
-let count = 0;
+const shortenedURL = mongoose.model('shortenedURL', shortenedUrlSchema);
 
 /** mounting body-parser **/
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -45,22 +44,27 @@ app.get('/', function(req, res) {
 app.post('/api/shorturl/new', function(req, res) {
   const url = req.body.url.replace(/(^\w+:|^)\/\//, '');
 
+  /** checking if the address valid using dns.lookup() **/
+
   dns.lookup(url, (error, address, family) => {
     if (error) {
-      console.log("Error! The page doesn't exist");
       res.status(404).json({ message: "The page doesn't exist" });
     }
 
-    const newUrl = new shortenedURL({ url: req.body.url, shortID: count });
+    /** defining short countID: countID = (all documents in db) + 1 **/
+    let countID = 0;
+    shortenedURL.countDocuments({}, function(err, count) {
+      countID = count + 1;
+      const newUrl = new shortenedURL({ url: req.body.url, shortID: countID });
 
-    newUrl.save(err => {
-      if (err) {
-        return res.send('Error saving to database');
-      }
+      newUrl.save(err => {
+        if (err) {
+          return res.send('Error saving to database');
+        }
+
+        return res.json({ url: newUrl.url, shortId: newUrl.shortID });
+      });
     });
-
-    count++;
-    return res.json({ newUrl });
   });
 });
 
